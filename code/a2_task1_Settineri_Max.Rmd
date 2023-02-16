@@ -2,19 +2,44 @@
 title: "Task 1"
 author: "Max Settineri"
 date: "2023-02-15"
-output: html_document
+output: 
+  html_document:
+    code_folding: hide
 ---
-
-### Overview
 
 ```{r setup, include=FALSE, warning = FALSE, message = FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
 library(tidyverse)
 library(here)
+library(broom)
+library(patchwork)
+library(GGally)
+
 
 ```
 
+### Overview
 
+This report....
+
+Questions answered:
+
+- 
+- 
 
 **Data source:** Abrahamson, W.G. 2019. Survival, growth and biomass estimates of two dominant palmetto species of south-central Florida from 1981 - 2017, ongoing at 5-year intervals ver 1. Environmental Data Initiative. https://doi.org/10.6073/pasta/f2f96ec76fbbd4b9db431c79a770c4d5
+
+### Reading in and cleaning up the data
+
+```{r}
+palmetto <- read_csv(here('data', 'palmetto.csv')) %>% 
+  select(height, length, width, green_lvs, species) %>% # selecting variables of interest
+  drop_na() %>% # dropping NA values
+  mutate(species_name = case_when(
+    species == 1 ~ 'Serenoa repens', # new column for species name with full species names
+    species == 2 ~ 'Sabal etonia'))
+```
+
+### Exploring differences between Serenoa repens and Sabal etonia
+
