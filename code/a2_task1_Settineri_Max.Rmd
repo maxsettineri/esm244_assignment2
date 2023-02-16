@@ -15,7 +15,7 @@ library(here)
 library(broom)
 library(patchwork)
 library(GGally)
-
+library(ggbeeswarm)
 
 ```
 
@@ -42,4 +42,30 @@ palmetto <- read_csv(here('data', 'palmetto.csv')) %>%
 ```
 
 ### Exploring differences between Serenoa repens and Sabal etonia
+
+```{r, eval = FALSE}
+# using GGally to look at trends and relationships between the two species and four variables of interest
+palmetto %>% 
+  select(species_name, height:green_lvs) %>% 
+  ggpairs(aes(color = species_name))
+
+# after initial analysis, looks to be: strong variation in green_lvs by species, slight variation in length and height, minimal difference in width
+```
+
+```{r}
+plot_h <- ggplot(data = palmetto, aes(x = species_name, y = height)) +
+  geom_beeswarm(aes(color = species_name)) +
+  theme_minimal() +
+  labs(x = "Species", y = "Height (cm)", subtitle = "Data from: Abrahamson, W.G. 2019") +
+  guides(fill = guide_legend(title = "Species")) +
+  geom_boxplot(fill = NA, width = 0.4, outlier.color = NA) +
+  theme(axis.ticks.x = element_blank(),
+    axis.text.x = element_blank()) +
+  scale_color_manual(values = c("blue", "yellow")) +
+  theme(legend.position = c(0.9, 0.8)) +
+  theme(legend.background = element_rect(fill="white", 
+                                  size=0, linetype="solid"))
+  
+plot_h
+```
 
