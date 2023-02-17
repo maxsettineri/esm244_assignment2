@@ -38,7 +38,8 @@ palmetto <- read_csv(here('data', 'palmetto.csv')) %>%
   drop_na() %>% # dropping NA values
   mutate(species_name = case_when(
     species == 1 ~ 'Serenoa repens', # new column for species name with full species names
-    species == 2 ~ 'Sabal etonia'))
+    species == 2 ~ 'Sabal etonia')) %>% 
+    mutate(species_name = as_factor(species_name)) # changing species name to a factor for blr
 ```
 
 ### Exploring differences between Serenoa repens and Sabal etonia
@@ -53,19 +54,98 @@ palmetto %>%
 ```
 
 ```{r}
+# plotting height by species
 plot_h <- ggplot(data = palmetto, aes(x = species_name, y = height)) +
   geom_beeswarm(aes(color = species_name)) +
   theme_minimal() +
-  labs(x = "Species", y = "Height (cm)", subtitle = "Data from: Abrahamson, W.G. 2019") +
+  labs(x = "Species", y = "Canopy height (cm)") +
   guides(fill = guide_legend(title = "Species")) +
   geom_boxplot(fill = NA, width = 0.4, outlier.color = NA) +
   theme(axis.ticks.x = element_blank(),
     axis.text.x = element_blank()) +
-  scale_color_manual(values = c("blue", "yellow")) +
+  scale_color_manual(values = c("cyan4", "orange3")) +
   theme(legend.position = c(0.9, 0.8)) +
   theme(legend.background = element_rect(fill="white", 
                                   size=0, linetype="solid"))
-  
-plot_h
+```
+
+```{r}
+# plotting length by species
+plot_l <- ggplot(data = palmetto, aes(x = species_name, y = length)) +
+  geom_beeswarm(aes(color = species_name)) +
+  theme_minimal() +
+  labs(x = "Species", y = "Length (cm)") +
+  guides(fill = guide_legend(title = "Species")) +
+  geom_boxplot(fill = NA, width = 0.4, outlier.color = NA) +
+  theme(axis.ticks.x = element_blank(),
+    axis.text.x = element_blank()) +
+  scale_color_manual(values = c("cyan4", "orange3")) +
+  theme(legend.position = c(0.9, 0.8)) +
+  theme(legend.background = element_rect(fill="white", 
+                                  size=0, linetype="solid"))
+```
+
+```{r}
+# plotting width by species
+plot_w <- ggplot(data = palmetto, aes(x = species_name, y = width)) +
+  geom_beeswarm(aes(color = species_name)) +
+  theme_minimal() +
+  labs(x = "Species", y = "Width (cm)") +
+  guides(fill = guide_legend(title = "Species")) +
+  geom_boxplot(fill = NA, width = 0.4, outlier.color = NA) +
+  theme(axis.ticks.x = element_blank(),
+    axis.text.x = element_blank()) +
+  scale_color_manual(values = c("cyan4", "orange3")) +
+  theme(legend.position = c(0.9, 0.8)) +
+  theme(legend.background = element_rect(fill="white", 
+                                  size=0, linetype="solid"))
+```
+
+```{r}
+# plotting green leaves by species
+plot_gl <- ggplot(data = palmetto, aes(x = species_name, y = green_lvs)) +
+  geom_beeswarm(aes(color = species_name)) +
+  theme_minimal() +
+  labs(x = "Species", y = "Number of green leaves") +
+  guides(fill = guide_legend(title = "Species")) +
+  geom_boxplot(fill = NA, width = 0.4, outlier.color = NA) +
+  theme(axis.ticks.x = element_blank(),
+    axis.text.x = element_blank()) +
+  scale_color_manual(values = c("cyan4", "orange3")) +
+  theme(legend.position = c(0.9, 0.8)) +
+  theme(legend.background = element_rect(fill="white", 
+                                  size=0, linetype="solid"))
+```
+
+```{r}
+# using patchwork to combine plots
+(plot_h | plot_l | plot_w)
+#(plot_w | plot_gl)
+```
+
+### Binary logistic regression
+
+Performing a BLR for two models:
+
+- **Model 1:** Log odds of plant type using plant height, canopy length, canopy width and green leaves
+
+- **Model 2:** Log odds of plant type using plant height, canopy width and green leaves
+
+```{r}
+# storing functions of combinations of variables for each model
+f1 <- species_name ~ height + length + width + green_lvs
+f2 <- species_name ~ height + width + green_lvs
+
+# performing and storing the BLR for each model
+blr1 <- glm(formula = f1, data = palmetto, family = 'binomial')
+blr2 <- glm(formula = f2, data = palmetto, family = 'binomial')
+
+# examining the outputs
+#summary(blr1)
+#summary(blr2)
+
+blr1_tidy <- tidy(blr1)
+blr2_tidy <- tidy(blr2)
+
 ```
 
