@@ -154,10 +154,9 @@ blr2_tidy
 
 ```
 
-### AIC
+### AIC and BIC
 
 ```{r}
-
 aic <- aictab(list(blr1, blr2))
 # model1 = 5194
 # model2 = 5987
@@ -168,4 +167,68 @@ aic <- aictab(list(blr1, blr2))
 **Model 2:** `r round(aic$AICc[2], 1)`
 
 The difference in AIC between the two models is large (`r round(aic$Delta_AICc[2], 1)`), showing that model 1 is significantly better fit than model 2.
+
+```{r}
+bic <- bictab(list(blr1, blr2))
+# model1 = 5232
+# model2 = 6017
+```
+
+**Model 1:** `r round(bic$BIC[1], 1)`
+
+**Model 2:** `r round(bic$BIC[2], 1)`
+
+The difference in BIC between the two models is large (`r round(bic$Delta_BIC[2], 1)`), showing that model 1 is significantly better fit than model 2.
+
+### Ten fold cross validation 
+
+```{r}
+set.seed(218) # setting seed for reproducibility
+
+tidyfold <- vfold_cv(palmetto, v = 10, repeats = 5)
+
+# defining model type 
+blr_model <- logistic_reg() %>% 
+  set_engine('glm')
+
+# set up workflow that bundles logistic model and formula
+
+# running for formula 1
+blr_tidy_wf_1 <- workflow() %>%
+  add_model(blr_model) %>%
+  add_formula(f1)
+
+blr_tidy_cv_f1 <- blr_tidy_wf_1 %>%
+  fit_resamples(tidyfold)
+
+# outputting metrics
+cv_metrics_f1 <- collect_metrics(blr_tidy_cv_f1)
+
+# running for formula 2
+blr_tidy_wf_2 <- workflow() %>%
+  add_model(blr_model) %>%
+  add_formula(f2)
+
+blr_tidy_cv_f2 <- blr_tidy_wf_2 %>%
+  fit_resamples(tidyfold)
+
+# outputting  metrics
+cv_metrics_f2 <- collect_metrics(blr_tidy_cv_f2) 
+ 
+# create tables for cross validation metrics
+
+# model 1
+cv_metrics_f1 %>% 
+  kable(caption = '**Table 5:** Model 1 Cross Validation',
+        col.names = c('Metric', 'Estimator', 'Mean',
+                      'n', 'Standard error', 'Configuration')) %>% 
+  kable_styling(full_width = FALSE)
+
+# model 2
+cv_metrics_f2 %>% 
+  kable(caption = '**Table 6:** Model 2 Cross Validation',
+        col.names = c('Metric', 'Estimator', 'Mean',
+                      'n', 'Standard error', 'Configuration')) %>% 
+  kable_styling(full_width = FALSE)
+```
 
