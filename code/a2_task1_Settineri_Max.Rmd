@@ -16,7 +16,9 @@ library(broom)
 library(patchwork)
 library(GGally)
 library(ggbeeswarm)
-
+library(tidymodels)
+library(AICcmodavg)
+library(kableExtra)
 ```
 
 ### Overview
@@ -147,5 +149,23 @@ blr2 <- glm(formula = f2, data = palmetto, family = 'binomial')
 blr1_tidy <- tidy(blr1)
 blr2_tidy <- tidy(blr2)
 
+blr1_tidy
+blr2_tidy
+
 ```
+
+### AIC
+
+```{r}
+
+aic <- aictab(list(blr1, blr2))
+# model1 = 5194
+# model2 = 5987
+```
+
+**Model 1:** `r round(aic$AICc[1], 1)`
+
+**Model 2:** `r round(aic$AICc[2], 1)`
+
+The difference in AIC between the two models is large (`r round(aic$Delta_AICc[2], 1)`), showing that model 1 is significantly better fit than model 2.
 
