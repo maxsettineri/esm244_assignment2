@@ -1,7 +1,7 @@
 ---
 title: "Task 2"
 author: "Max Settineri"
-date: "2023-02-20"
+date: "2023-02-19"
 output: 
   html_document:
     code_folding: hide
@@ -16,11 +16,12 @@ library(broom)
 library(patchwork)
 library(janitor)
 library(kableExtra)
+library(modelr)
 ```
 
 ### Overview
 
-
+This report looks at lizard pitfall trap data in the Jornada Basin LTER site in New Mexico from 1989-2006. This analysis will use non linear least squares (NLS) to estimate weight as a function of snout to vent length for lizard populations. An NLS model will be fit for weight and snout to vent length for all lizards in the data set; then NLS will be used again to fit a model for only male western whiptail lizards. The two models will then be compared to determine which is more effective. 
 
 **Data Citation:** Lightfoot, D. and W.G. Whitford. 2020. Lizard pitfall trap data from 11 NPP study locations at the Jornada Basin LTER site, 1989-2006 ver 37. Environmental Data Initiative. https://doi.org/10.6073/pasta/4a6e258fb49c31e222ecbbcfd128967f
 
@@ -31,7 +32,11 @@ lizards <- read_csv(here("data", "lizards.csv")) %>%
   clean_names() %>% 
   mutate(log_weight = log(weight)) %>% # log transforming the data - since we are using an exponential base equation
   mutate(log_length = log(sv_length)) %>% 
-  drop_na()
+  drop_na() %>% 
+  mutate(sex = case_when(
+    sex == "M" ~ "Male",
+    sex == "F" ~ "Female"
+  ))
 ```
 
 ### Fitting snout length to weight model
@@ -46,17 +51,156 @@ lizards <- read_csv(here("data", "lizards.csv")) %>%
 ```{r}
 # running a guess model
 guess_model <- lm(log_weight ~ log_length, data = lizards) 
+
+# pulling out the coefficients from the guess model
+coef <- coefficients(guess_model)
+
+# cleaning up the model to more easily pull out the coefficients 
+guess_model_tidy <- tidy(guess_model)
+
+# storing a function of the model with coefficients
+weight_function <- function(a, sv_length, b){
+  weight = a*(sv_length)^b
+  return(weight)
+}
 ```
 
-ulling out the coefficients from my_guess_model
-
-- Using `coefficients` function
-```{r}
-coef <- coefficients(my_guess_model)
-#Cleaning up the model so I can pull out the coefficients easier 
-my_guess_model_clean <- tidy(my_guess_model)
-```
 **Coefficient Output**
 
-- The intercept of `my_guess_model` is `r round(my_guess_model_clean$estimate[1],3)`
-- The log_length of `my_guess_model` is `r round(my_guess_model_clean$estimate[2],3)`
+- The intercept of `guess_model` is `r round(guess_model_tidy$estimate[1], 3)`
+- The log_length of `guess_model` is `r round(guess_model_tidy$estimate[2], 3)`
+
+### Running NLS on the entire data set
+
+```{r}
+# feeding in estimated coefficients as starting point for nls
+lizards_nls <- nls(weight ~ weight_function(a,sv_length,b),
+                    data = lizards,
+                    start = list(b = coef[2],
+                                 a = exp(coef[1])))
+
+# making a tidy model output
+lizards_nls_tidy <- tidy(lizards_nls)
+```
+
+```{r}
+# making a table with outputs
+lizards_nls_tidy %>% 
+  mutate(p.value = case_when(p.value < 0.001 ~ '<0.001')) %>% 
+  kable(col.names = c('Term', 'Coefficient', 'Standard Error', 'Statistic', 'P Value'), 
+        digits = 4, 
+        caption = '<b>Table 1:</b> NLS Model Results') %>% 
+  kable_styling(bootstrap_options = c("striped", "hover")) %>% 
+  kable_styling(full_width = FALSE)
+```
+
+```{r}
+# predicting data based on our NLS model
+lizards_augment <- augment(lizards_nls)
+```
+
+```{r}
+# plotting the predicted data to actual data
+ggplot() +
+  geom_point(data = lizards, aes(
+             x = sv_length,
+             y = weight, 
+             color = sex)) +
+  geom_line(data = lizards_augment, aes(
+            x = sv_length,
+            y = .fitted,
+            color = "Model Predictions"),
+            size = 0.7) +
+  theme_minimal(12) +
+  scale_color_manual(values = c("steelblue4", "aquamarine", "red")) +
+  theme(legend.position = c(0.2,0.8), legend.title = element_blank()) +
+  labs( x = "Snout to Vent Length (mm)", y = "Weight (g)")
+
+# calculating RMSE
+lizards_rmse <- rmse(lizards_nls, data = lizards)
+```
+
+**Figure 1:** looks at snout to vent length and weight for all lizard species, colored by sex. The red line displays the NLS model which predicts weight as a function of snout to vent length. The root mean squared error (RMSE) for this NLS model is `r round(lizards_rmse, 3)`.
+
+### Running NLS on male Western Whiptail lizards
+
+```{r}
+# filtering out male whiptails
+whiptails <- lizards %>% 
+  filter(spp == "CNTI", sex == "Male") 
+```
+
+```{r}
+# running linear regression on log transformed data to estimate starting coefficients
+guess_whiptails <- lm(log_weight ~ log_length, data = whiptails)
+
+# tidy output of guess model
+tidy_whiptails_guess <- tidy(guess_whiptails) 
+
+# pulling out coefficients for NLS
+whiptails_coef <- coefficients(guess_whiptails)
+```
+
+**Coefficient Output**
+
+- The intercept of `guess_whiptails` is `r round(tidy_whiptails_guess$estimate[1],3)`
+- The log_length of `guess_whiptails` is `r round(tidy_whiptails_guess$estimate[2],3)`
+
+```{r}
+# running NLS whiptails
+whiptails_nls <- nls(weight ~ weight_function(a, sv_length, b), 
+                  data = whiptails,
+                  start = list(b = whiptails_coef[2], # starting from our guess coefficients
+                               a = exp(whiptails_coef[1]))) # retransforming the intercept coefficient 
+
+# tidy output of model
+whiptails_nls_tidy <- tidy(whiptails_nls) 
+
+whiptails_nls_tidy %>%
+  mutate(p.value = case_when(p.value < 0.001 ~ '<0.001',
+                             p.value > 0.001 ~ as.character(round(p.value, 3)))) %>% 
+  kable(col.names = c('Term', 'Coefficient', 'Standard Error', 'Statistic', 'P Value'), digits = 4, caption = '<b>Table 2:</b> Whiptail NLS Model Results') %>% 
+  kable_styling(bootstrap_options = c('striped', 'hover')) %>% 
+  kable_styling(full_width = FALSE)
+```
+
+```{r}
+# predicting data based on model
+whiptails_augment <- augment(whiptails_nls)
+
+# making a data frame with all data and predicted values for whiptails
+whiptails_all <- data.frame(lizards, lizards_augment) %>% 
+  filter(spp == "CNTI", sex == "Male")
+```
+
+```{r}
+# visualizing actual data against the fitted models
+ggplot() +
+  geom_point(data = whiptails, aes(
+             x = sv_length,
+             y = weight,
+             color = 'Actual Whiptails Data')) +
+  geom_line(data = whiptails_augment, aes(
+            x = sv_length,
+            y = .fitted,
+            color = 'Whiptail Specific Model'),
+            size = 0.7) +
+  geom_line(data = whiptails_all, aes(
+            x = sv_length,
+            y = .fitted,
+            color = 'All Species Model'),
+            size = 0.7) +
+  scale_color_manual(values = c('steelblue4', 'aquamarine', 'red')) +
+  theme_minimal(12) +
+  labs( x = "Snout to Vent Length (mm)", y = "Weight (g)") +
+  theme(legend.title = element_blank(),
+        legend.position = c(0.2, 0.8))
+
+# calculating RMSE
+whiptails_rmse <- rmse(whiptails_nls, data = whiptails) # running whiptail model on whiptail subset
+whiptails_rmse_all <- rmse(lizards_nls, data = whiptails) # running general model on whiptail data
+```
+
+**Figure 2:** compares the snout to vent length and weight of male western whiptail lizards. The red line displays the NLS model trend that was trained on the subset of data including only male whiptail lizards. The light blue line represents the NLS model trained on the entire data set. The root mean squared error (RMSE) of the model trained on the entire data set is `r round(whiptails_rmse_all, 3)`; the RMSE of the whiptail specific model is `r round(whiptails_rmse, 3)`. The whiptail specific model has a lower RMSE, signifying that this model is the best fit when predicting weight from snout to vent length of male western whiptail lizards. 
+
+
