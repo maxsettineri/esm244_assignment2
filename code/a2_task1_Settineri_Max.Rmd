@@ -149,9 +149,15 @@ blr2 <- glm(formula = f2, data = palmetto, family = 'binomial')
 blr1_tidy <- tidy(blr1)
 blr2_tidy <- tidy(blr2)
 
-blr1_tidy
-blr2_tidy
+blr1_tidy %>% 
+  kable(caption = "**Table 1:** Model 1 BLR results",
+        col.names = c("Variable", "Coefficient", "Standard error", "Statistic", "p-value")) %>% 
+  kable_styling(full_width = FALSE)
 
+blr2_tidy %>% 
+  kable(caption = "**Table 2:** Model 2 BLR results",
+        col.names = c("Variable", "Coefficient", "Standard error", "Statistic", "p-value")) %>% 
+  kable_styling(full_width = FALSE)
 ```
 
 ### AIC and BIC
@@ -219,16 +225,66 @@ cv_metrics_f2 <- collect_metrics(blr_tidy_cv_f2)
 
 # model 1
 cv_metrics_f1 %>% 
-  kable(caption = '**Table 5:** Model 1 Cross Validation',
+  kable(caption = '**Table 3:** Model 1 Cross Validation',
         col.names = c('Metric', 'Estimator', 'Mean',
                       'n', 'Standard error', 'Configuration')) %>% 
   kable_styling(full_width = FALSE)
 
 # model 2
 cv_metrics_f2 %>% 
-  kable(caption = '**Table 6:** Model 2 Cross Validation',
+  kable(caption = '**Table 4:** Model 2 Cross Validation',
         col.names = c('Metric', 'Estimator', 'Mean',
                       'n', 'Standard error', 'Configuration')) %>% 
   kable_styling(full_width = FALSE)
+```
+
+As shown in Tables 3 and 4, the mean accuracy of Model 1 is `r round(cv_metrics_f1$mean[1],3)`, while the mean accuracy for Model 2 is `r round(cv_metrics_f2$mean[1],3)`. These cross validation results, combined with the AIC and BIC results, show that Model 1 performs better than Model 2 at species classification.
+
+### Training Model 1 on the entrie data set
+
+```{r}
+# using the entire data set to train model 1
+blr1_tidyfit <- blr_model %>% 
+  fit(f1, data = palmetto)
+
+# output coefficients into a table
+coef_blr1_tidy <- tidy(blr1_tidyfit)
+coef_blr1_tidy %>% 
+  kable(caption = '**Table 5:** Final Model BLR coefficients',
+        col.names = c('Variable', 'Coefficient', 'Standard error', 'Statistic', 'p-value')) %>% 
+  kable_styling(full_width = FALSE)
+```
+
+### Model accuracy
+
+```{r}
+# converting log odds to probabilities
+blr_fitted <- blr1 %>% 
+  broom::augment(type.predict = "response")
+
+# creating a function to calculate accuracy
+pred_acc <- function(x, y) {
+  accurate <- ifelse(x == y, 0, 1)
+  return(accurate)
+}
+
+model_success <- blr_fitted %>% 
+  mutate(predict_repens = predict(blr1, palmetto, type = "response")) %>% 
+  mutate(predicted = ifelse(predict_repens >= 0.50, "Serenoa repens", "Sabal etonia")) %>%
+  mutate(accurate = pred_acc(species_name, predicted)) %>% 
+  mutate(correct =  case_when(species_name == predicted ~ "Correct",
+                              TRUE ~ "Incorrect"))
+
+pred_table <- model_success %>%
+  group_by(species_name) %>% 
+  summarize(total_accurate = sum(accurate),
+            total_inaccurate = n() - sum(accurate),
+            model_success = mean(accurate)*100)
+
+pred_table %>% 
+  kbl(digits = 2, 
+      caption = "**Table 6:** Model Accuracy by Species", 
+      col.names = c("Species", "Total Accurate", "Total Inaccurate", "% Correctly Classified")) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
 ```
 
