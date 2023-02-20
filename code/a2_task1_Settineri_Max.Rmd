@@ -23,12 +23,7 @@ library(kableExtra)
 
 ### Overview
 
-This report....
-
-Questions answered:
-
-- 
-- 
+This report examines data on two palmetto species (*Serenoa repens* and *Sabal etonia*) in South Florida to produce a binomial logistic regression model that classifies plant species based on several variables including canopy height, plant length, width, and number of green leaves. First, the relationships between variables and species are visualized to determine which variables might be useful in differentiating between species. Then, the model is evaluated using 10-fold cross validation, AIC, and BIC. Lastly, the model is applied to the data to determine its accuracy in predicting plant species.
 
 **Data source:** Abrahamson, W.G. 2019. Survival, growth and biomass estimates of two dominant palmetto species of south-central Florida from 1981 - 2017, ongoing at 5-year intervals ver 1. Environmental Data Initiative. https://doi.org/10.6073/pasta/f2f96ec76fbbd4b9db431c79a770c4d5
 
@@ -125,6 +120,8 @@ plot_gl <- ggplot(data = palmetto, aes(x = species_name, y = green_lvs)) +
 #(plot_w | plot_gl)
 ```
 
+**Figure 1:** 
+
 ### Binary logistic regression
 
 Performing a BLR for two models:
@@ -160,7 +157,9 @@ blr2_tidy %>%
   kable_styling(full_width = FALSE)
 ```
 
-### AIC and BIC
+The coefficients for each predictor variable can be observed in Tables 1 and 2 for our 2 log-linear models. Number of green leaves has the largest coefficient of all variables in both models. 
+
+#### AIC
 
 ```{r}
 aic <- aictab(list(blr1, blr2))
@@ -173,6 +172,8 @@ aic <- aictab(list(blr1, blr2))
 **Model 2:** `r round(aic$AICc[2], 1)`
 
 The difference in AIC between the two models is large (`r round(aic$Delta_AICc[2], 1)`), showing that model 1 is significantly better fit than model 2.
+
+#### BIC
 
 ```{r}
 bic <- bictab(list(blr1, blr2))
