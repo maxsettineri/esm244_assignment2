@@ -1,10 +1,11 @@
 ---
-title: "Task 1"
+title: "Task 1: Palmetto binary logistic regression"
 author: "Max Settineri"
 date: "2023-02-15"
 output: 
   html_document:
     code_folding: hide
+    toc: yes
 ---
 
 ```{r setup, include=FALSE, warning = FALSE, message = FALSE}
@@ -14,11 +15,13 @@ library(tidyverse)
 library(here)
 library(broom)
 library(patchwork)
+library(cowplot)
 library(GGally)
 library(ggbeeswarm)
 library(tidymodels)
 library(AICcmodavg)
 library(kableExtra)
+library(equatiomatic)
 ```
 
 ### Overview
@@ -27,9 +30,8 @@ This report examines data on two palmetto species (*Serenoa repens* and *Sabal e
 
 **Data source:** Abrahamson, W.G. 2019. Survival, growth and biomass estimates of two dominant palmetto species of south-central Florida from 1981 - 2017, ongoing at 5-year intervals ver 1. Environmental Data Initiative. https://doi.org/10.6073/pasta/f2f96ec76fbbd4b9db431c79a770c4d5
 
-### Reading in and cleaning up the data
-
 ```{r}
+# Reading in and cleaning up the data
 palmetto <- read_csv(here('data', 'palmetto.csv')) %>% 
   select(height, length, width, green_lvs, species) %>% # selecting variables of interest
   drop_na() %>% # dropping NA values
@@ -54,6 +56,7 @@ palmetto %>%
 # plotting height by species
 plot_h <- ggplot(data = palmetto, aes(x = species_name, y = height)) +
   geom_beeswarm(aes(color = species_name)) +
+  facet_wrap(~ species) +
   theme_minimal() +
   labs(x = "Species", y = "Canopy height (cm)") +
   guides(fill = guide_legend(title = "Species")) +
@@ -61,66 +64,59 @@ plot_h <- ggplot(data = palmetto, aes(x = species_name, y = height)) +
   theme(axis.ticks.x = element_blank(),
     axis.text.x = element_blank()) +
   scale_color_manual(values = c("cyan4", "orange3")) +
-  theme(legend.position = c(0.9, 0.8)) +
+  theme(legend.position = c(0.5, 0.9)) +
   theme(legend.background = element_rect(fill="white", 
-                                  size=0, linetype="solid"))
-```
+                                  size=0, linetype="solid"),
+        legend.title = element_blank()) +
+  theme(strip.text = element_blank())
 
-```{r}
 # plotting length by species
 plot_l <- ggplot(data = palmetto, aes(x = species_name, y = length)) +
   geom_beeswarm(aes(color = species_name)) +
   theme_minimal() +
+  facet_wrap(~ species) +
   labs(x = "Species", y = "Length (cm)") +
   guides(fill = guide_legend(title = "Species")) +
   geom_boxplot(fill = NA, width = 0.4, outlier.color = NA) +
   theme(axis.ticks.x = element_blank(),
     axis.text.x = element_blank()) +
   scale_color_manual(values = c("cyan4", "orange3")) +
-  theme(legend.position = c(0.9, 0.8)) +
-  theme(legend.background = element_rect(fill="white", 
-                                  size=0, linetype="solid"))
-```
+  theme(legend.position = 'none') +
+  theme(strip.text = element_blank())
 
-```{r}
 # plotting width by species
 plot_w <- ggplot(data = palmetto, aes(x = species_name, y = width)) +
   geom_beeswarm(aes(color = species_name)) +
   theme_minimal() +
+  facet_wrap(~ species) +
   labs(x = "Species", y = "Width (cm)") +
   guides(fill = guide_legend(title = "Species")) +
   geom_boxplot(fill = NA, width = 0.4, outlier.color = NA) +
   theme(axis.ticks.x = element_blank(),
     axis.text.x = element_blank()) +
   scale_color_manual(values = c("cyan4", "orange3")) +
-  theme(legend.position = c(0.9, 0.8)) +
-  theme(legend.background = element_rect(fill="white", 
-                                  size=0, linetype="solid"))
-```
+  theme(legend.position = 'none') +
+  theme(strip.text = element_blank())
 
-```{r}
 # plotting green leaves by species
 plot_gl <- ggplot(data = palmetto, aes(x = species_name, y = green_lvs)) +
   geom_beeswarm(aes(color = species_name)) +
   theme_minimal() +
+  facet_wrap(~ species) +
   labs(x = "Species", y = "Number of green leaves") +
   guides(fill = guide_legend(title = "Species")) +
   geom_boxplot(fill = NA, width = 0.4, outlier.color = NA) +
   theme(axis.ticks.x = element_blank(),
     axis.text.x = element_blank()) +
   scale_color_manual(values = c("cyan4", "orange3")) +
-  theme(legend.position = c(0.9, 0.8)) +
-  theme(legend.background = element_rect(fill="white", 
-                                  size=0, linetype="solid"))
+  theme(legend.position = 'none') +
+  theme(strip.text = element_blank())
+
+# using cowplot to combine plots
+plot_grid(plot_h, plot_l, plot_w, plot_gl, labels = c('A.', 'B.', 'C.', 'D.'), label_size = 12)
 ```
 
-```{r}
-# using patchwork to combine plots
-(plot_h | plot_l | plot_w)
-#(plot_w | plot_gl)
-```
-
-**Figure 1:** 
+**Figure 1:** Here we see a display of individual data points for variables height (Panel A), length (Panel B), width (Panel C) and number of green leaves (Panel D) for Serenoa repend (cyan) and Sabtal etonia (orange). The box plots indicate the 25th through 75th percentiles of the data spread, while central black line of each box plot signifies the median value. 
 
 ### Binary logistic regression
 
@@ -143,16 +139,23 @@ blr2 <- glm(formula = f2, data = palmetto, family = 'binomial')
 #summary(blr1)
 #summary(blr2)
 
-blr1_tidy <- tidy(blr1)
-blr2_tidy <- tidy(blr2)
+# storing results of regression
+blr1_tidy <- tidy(blr1) %>% 
+  mutate(p.value = case_when( # finalizing p.values for table
+    p.value <0.001 ~ '<0.001'))
 
+blr2_tidy <- tidy(blr2) %>% 
+  mutate(p.value = case_when( # finalizing p.values for table
+    p.value <0.001 ~ '<0.001'))
+
+# making tables with kable
 blr1_tidy %>% 
-  kable(caption = "**Table 1:** Model 1 BLR results",
+  kable(caption = "<b>Table 1:</b> Model 1 BLR results",
         col.names = c("Variable", "Coefficient", "Standard error", "Statistic", "p-value")) %>% 
   kable_styling(full_width = FALSE)
 
 blr2_tidy %>% 
-  kable(caption = "**Table 2:** Model 2 BLR results",
+  kable(caption = "<b>Table 2:</b> Model 2 BLR results",
         col.names = c("Variable", "Coefficient", "Standard error", "Statistic", "p-value")) %>% 
   kable_styling(full_width = FALSE)
 ```
@@ -209,7 +212,7 @@ blr_tidy_cv_f1 <- blr_tidy_wf_1 %>%
   fit_resamples(tidyfold)
 
 # outputting metrics
-cv_metrics_f1 <- collect_metrics(blr_tidy_cv_f1)
+cv_metrics_f1 <- collect_metrics(blr_tidy_cv_f1) 
 
 # running for formula 2
 blr_tidy_wf_2 <- workflow() %>%
@@ -226,14 +229,14 @@ cv_metrics_f2 <- collect_metrics(blr_tidy_cv_f2)
 
 # model 1
 cv_metrics_f1 %>% 
-  kable(caption = '**Table 3:** Model 1 Cross Validation',
+  kable(caption = '<b>Table 3:</b> Model 1 Cross Validation',
         col.names = c('Metric', 'Estimator', 'Mean',
                       'n', 'Standard error', 'Configuration')) %>% 
   kable_styling(full_width = FALSE)
 
 # model 2
 cv_metrics_f2 %>% 
-  kable(caption = '**Table 4:** Model 2 Cross Validation',
+  kable(caption = '<b>Table 4:</b> Model 2 Cross Validation',
         col.names = c('Metric', 'Estimator', 'Mean',
                       'n', 'Standard error', 'Configuration')) %>% 
   kable_styling(full_width = FALSE)
@@ -249,12 +252,18 @@ blr1_tidyfit <- blr_model %>%
   fit(f1, data = palmetto)
 
 # output coefficients into a table
-coef_blr1_tidy <- tidy(blr1_tidyfit)
+coef_blr1_tidy <- tidy(blr1_tidyfit) %>% 
+  mutate(p.value = case_when( # finalizing p.values for table
+    p.value <0.001 ~ '<0.001'))
+
 coef_blr1_tidy %>% 
-  kable(caption = '**Table 5:** Final Model BLR coefficients',
+  kable(caption = '<b>Table 5:</b> Final Model BLR coefficients',
         col.names = c('Variable', 'Coefficient', 'Standard error', 'Statistic', 'p-value')) %>% 
   kable_styling(full_width = FALSE)
 ```
+
+**Final Model Equation:**
+`r equatiomatic::extract_eq(blr1, wrap = TRUE, use_coefs = TRUE)`
 
 ### Model accuracy
 
@@ -276,16 +285,19 @@ model_success <- blr_fitted %>%
   mutate(correct =  case_when(species_name == predicted ~ "Correct",
                               TRUE ~ "Incorrect"))
 
+# storing prediction results in a table
 pred_table <- model_success %>%
   group_by(species_name) %>% 
   summarize(total_accurate = sum(accurate),
             total_inaccurate = n() - sum(accurate),
             model_success = mean(accurate)*100)
 
+# making finalized table with kable
 pred_table %>% 
   kbl(digits = 2, 
-      caption = "**Table 6:** Model Accuracy by Species", 
+      caption = "<b>Table 6:</b> Model Accuracy by Species", 
       col.names = c("Species", "Total Accurate", "Total Inaccurate", "% Correctly Classified")) %>% 
   kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
 ```
 
+**Conclusion:** Based on the model accuracy metrics shown in Table 6, the model correctly predicted the right species about 90% of the time for Serenoa repens and 92% of the time for Sabal etonia. 
