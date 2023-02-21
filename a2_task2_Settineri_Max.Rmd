@@ -25,9 +25,8 @@ This report looks at lizard pitfall trap data in the Jornada Basin LTER site in 
 
 **Data Citation:** Lightfoot, D. and W.G. Whitford. 2020. Lizard pitfall trap data from 11 NPP study locations at the Jornada Basin LTER site, 1989-2006 ver 37. Environmental Data Initiative. https://doi.org/10.6073/pasta/4a6e258fb49c31e222ecbbcfd128967f
 
-### Reading in and cleaning data
-
 ```{r}
+# Reading in and cleaning data
 lizards <- read_csv(here("data", "lizards.csv")) %>% 
   clean_names() %>% 
   mutate(log_weight = log(weight)) %>% # log transforming the data - since we are using an exponential base equation
@@ -44,9 +43,8 @@ lizards <- read_csv(here("data", "lizards.csv")) %>%
 **Equation**
 \[W = a(SVL)^b\]
 
-- Where `W` is the Body weight (g), `SVL` is snout to vent length (mm).
-- `a` and `b` are parameters which need to be fitted
-
+- Where W is the Body weight (g), SVL is snout to vent length (mm).
+- a and b are parameters which need to be fitted
 
 ```{r}
 # running a guess model

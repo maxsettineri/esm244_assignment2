@@ -683,10 +683,8 @@ effective.</p>
 2020. Lizard pitfall trap data from 11 NPP study locations at the
 Jornada Basin LTER site, 1989-2006 ver 37. Environmental Data
 Initiative. <a href="https://doi.org/10.6073/pasta/4a6e258fb49c31e222ecbbcfd128967f" class="uri">https://doi.org/10.6073/pasta/4a6e258fb49c31e222ecbbcfd128967f</a></p>
-</div>
-<div id="reading-in-and-cleaning-data" class="section level3">
-<h3>Reading in and cleaning data</h3>
-<pre class="r"><code>lizards &lt;- read_csv(here(&quot;data&quot;, &quot;lizards.csv&quot;)) %&gt;% 
+<pre class="r"><code># Reading in and cleaning data
+lizards &lt;- read_csv(here(&quot;data&quot;, &quot;lizards.csv&quot;)) %&gt;% 
   clean_names() %&gt;% 
   mutate(log_weight = log(weight)) %&gt;% # log transforming the data - since we are using an exponential base equation
   mutate(log_length = log(sv_length)) %&gt;% 
@@ -701,10 +699,9 @@ Initiative. <a href="https://doi.org/10.6073/pasta/4a6e258fb49c31e222ecbbcfd1289
 <p><strong>Equation</strong> <span class="math display">\[W =
 a(SVL)^b\]</span></p>
 <ul>
-<li>Where <code>W</code> is the Body weight (g), <code>SVL</code> is
-snout to vent length (mm).</li>
-<li><code>a</code> and <code>b</code> are parameters which need to be
-fitted</li>
+<li>Where W is the Body weight (g), SVL is snout to vent length
+(mm).</li>
+<li>a and b are parameters which need to be fitted</li>
 </ul>
 <pre class="r"><code># running a guess model
 guess_model &lt;- lm(log_weight ~ log_length, data = lizards) 
